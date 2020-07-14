@@ -15,7 +15,7 @@ namespace TechJobsPersistent.Controllers
 {
     public class HomeController : Controller
     {
-        private JobDbContext context;
+        private readonly JobDbContext context;
 
         public HomeController(JobDbContext dbContext)
         {
@@ -32,12 +32,41 @@ namespace TechJobsPersistent.Controllers
         [HttpGet("/Add")]
         public IActionResult AddJob()
         {
-            return View();
+            List<Employer> allEmployers = context.Employers.ToList();
+            List<Skill> AllSkills = context.Skills.ToList();
+            AddJobViewModel addJobViewModel = new AddJobViewModel(allEmployers, AllSkills);    
+            return View(addJobViewModel);
         }
 
-        public IActionResult ProcessAddJobForm()
+        [HttpPost]
+        public IActionResult ProcessAddJobForm(AddJobViewModel addJobViewModel, string[] selectedSkills)
         {
-            return View();
+            if (ModelState.IsValid)
+            {
+                Job newJob = new Job
+                {
+                    Name = addJobViewModel.JobName,                    
+                    Employer = context.Employers.Find(addJobViewModel.EmployerId)
+                };
+
+                foreach (var skill in selectedSkills)                
+                {
+                    JobSkill jobSkills = new JobSkill
+                    {
+                        JobId = newJob.Id,
+                        Job = newJob,
+                        SkillId = int.Parse(skill),
+                        Skill = context.Skills.Find(int.Parse(skill))
+                    };
+                    context.JobSkills.Add(jobSkills);
+                }
+                
+                context.Jobs.Add(newJob);
+                context.SaveChanges();
+                return Redirect("/Home");
+            }
+
+            return View("AddJob", addJobViewModel);            
         }
 
         public IActionResult Detail(int id)
